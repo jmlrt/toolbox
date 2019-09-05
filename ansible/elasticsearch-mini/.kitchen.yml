@@ -17,6 +17,12 @@ platforms:
       run_command: "/usr/sbin/init"
       privileged: true
       use_sudo: true
+  - name: ubuntu-18.04
+    driver_config:
+      image: ubuntu:18.04
+      run_command: "/sbin/init"
+      privileged: true
+      use_sudo: true
 
 suites:
   - name: main
