@@ -1,0 +1,25 @@
+---
+driver:
+  name: docker
+
+provisioner:
+  name: ansible_playbook
+  hosts: localhost
+  require_ansible_repo: true
+  ansible_verbose: true
+  ansible_version: latest
+  require_chef_for_busser: false
+
+platforms:
+  - name: centos-7
+    driver_config:
+      image: centos:7
+      run_command: "/usr/sbin/init"
+      privileged: true
+      use_sudo: true
+
+suites:
+  - name: main
+    provisioner:
+      idempotency_test: false
+      playbook: main.yml
