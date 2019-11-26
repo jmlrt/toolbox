@@ -15,14 +15,24 @@
         - vim
 
     - name: use local elastic package
-      when: package | bool
+      when: package | length > 0
       block:
-        - name: set es_package to {{ package }}
+        - name: set es_package to /tmp/kitchen/roles/elasticsearch-mini/{{ package }}
           set_fact:
-            es_package: "{{ package }}"
+            es_package: "/tmp/kitchen/roles/elasticsearch-mini/{{ package }}"
+        - when: ansible_facts['os_family'] == "Debian"
+          name: install {{ es_package }}.deb
+          apt:
+            deb: "{{ es_package }}.deb"
+            state: present
+        - when: ansible_facts['os_family'] == "RedHat"
+          name: install {{ es_package }}.rpm
+          yum:
+            name: "{{ es_package }}.rpm"
+            state: present
 
     - name: use elastic repository
-      when: not package | bool
+      when: package | length == 0
       block:
         - name: set package to elasticsearch
           set_fact:
@@ -51,11 +61,11 @@
               apt_repository:
                 repo: "deb {{ elastic_repos_url }}/apt stable main"
                 state: present
+        - name: install elasticsearch
+          package:
+            name: "{{ es_package }}"
+            state: present
 
-    - name: install elasticsearch
-      package:
-        name: "{{ es_package }}"
-        state: present
     - name: start elasticsearch
       systemd:
         name: elasticsearch
