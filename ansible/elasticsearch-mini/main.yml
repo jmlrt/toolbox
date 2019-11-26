@@ -1,47 +1,63 @@
 ---
 - hosts: localhost
   vars:
-    elastic_repos_url: https://artifacts.elastic.co/packages/7.x
+    major_version: 7.x
+    elastic_repos_url: https://artifacts.elastic.co/packages/{{ major_version }}
     elastic_gpg_key_url: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+    package: ""
   tasks:
-    - when: ansible_facts['os_family'] == "RedHat"
-      block:
-      - name: add yum repository
-        yum_repository:
-          name: elasticsearch-7.x
-          state: present
-          baseurl: "{{ elastic_repos_url }}/yum"
-          description: Elasticsearch repository for 7.x packages
-          gpgcheck: yes
-          gpgkey: "{{ elastic_gpg_key_url }}"
-    - when: ansible_facts['os_family'] == "Debian"
-      block:
-      - name: install apt-transport-https package
-        apt:
-          name: apt-transport-https
-          state: present
-      - name: add apt repository key
-        apt_key:
-          url: "{{ elastic_gpg_key_url }}"
-          state: present
-      - name: add apt repository
-        apt_repository:
-          repo: "deb {{ elastic_repos_url }}/apt stable main"
-          state: present
-
-    - name: install elasticsearch package
-      package:
-        name: elasticsearch
-        state: present
-    - name: start elasticsearch
-      systemd:
-        name: elasticsearch
-        state: started
-        daemon_reload: yes
     - name: install tools
       yum:
         name: "{{ item }}"
         state: present
       loop:
-          - jq
-          - vim
+        - jq
+        - vim
+
+    - name: use local elastic package
+      when: package | bool
+      block:
+        - name: set es_package to {{ package }}
+          set_fact:
+            es_package: "{{ package }}"
+
+    - name: use elastic repository
+      when: not package | bool
+      block:
+        - name: set package to elasticsearch
+          set_fact:
+            es_package: elasticsearch
+        - when: ansible_facts['os_family'] == "RedHat"
+          block:
+            - name: add yum repository
+              yum_repository:
+                name: elasticsearch-{{ major_version }}
+                state: present
+                baseurl: "{{ elastic_repos_url }}/yum"
+                description: Elasticsearch repository for {{ major_version }} packages
+                gpgcheck: true
+                gpgkey: "{{ elastic_gpg_key_url }}"
+        - when: ansible_facts['os_family'] == "Debian"
+          block:
+            - name: install apt-transport-https package
+              apt:
+                name: apt-transport-https
+                state: present
+            - name: add apt repository key
+              apt_key:
+                url: "{{ elastic_gpg_key_url }}"
+                state: present
+            - name: add apt repository
+              apt_repository:
+                repo: "deb {{ elastic_repos_url }}/apt stable main"
+                state: present
+
+    - name: install elasticsearch
+      package:
+        name: "{{ es_package }}"
+        state: present
+    - name: start elasticsearch
+      systemd:
+        name: elasticsearch
+        state: started
+        daemon_reload: true
