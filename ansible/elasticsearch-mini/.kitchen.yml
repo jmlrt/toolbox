@@ -25,7 +25,14 @@ platforms:
       use_sudo: true
 
 suites:
-  - name: main
+  - name: es-7
     provisioner:
       idempotency_test: false
       playbook: main.yml
+  - name: es-6
+    provisioner:
+      idempotency_test: false
+      playbook: main.yml
+      attributes:
+        extra_vars:
+          major_version: 6.x
