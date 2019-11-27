@@ -7,12 +7,26 @@
     package: ""
   tasks:
     - name: install tools
-      yum:
+      package:
         name: "{{ item }}"
         state: present
       loop:
         - jq
         - vim
+
+    - name: install java
+      when: major_version == "6.x"
+      block:
+        - when: ansible_facts['os_family'] == "Debian"
+          set_fact:
+            java_package: openjdk-8-jre-headless
+        - when: ansible_facts['os_family'] == "RedHat"
+          set_fact:
+            java_package: java-1.8.0-openjdk.x86_64
+        - name: install java
+          package:
+            name: "{{ java_package }}"
+            state: present
 
     - name: use local elastic package
       when: package | length > 0
