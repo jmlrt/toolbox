@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "probes-using-scripts.fullname" . }}-scripts
+  labels:
+{{ include "probes-using-scripts.labels" . | indent 4 }}
+data:
+  {{- $files := .Files }}
+  {{- range list "scripts/check-probe.sh" }}
+  {{ . | base }}: {{ $files.Get . | nindent 4 }}
+  {{- end }}
