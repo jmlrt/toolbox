@@ -26,6 +26,7 @@ test:
 checksum:
 	for FILE in $(FILES); do \
 		sha256sum $$FILE > $$FILE.sha256; \
+		sha256sum -c $$FILE.sha256; \
 	done
 
 .PHONY: shred
