@@ -20,4 +20,4 @@ esac
 
 FILE_NAME=${3%.pdf}
 
-gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=$PDF_SETTINGS $COLOR_SETTINGS -dNOPAUSE -dQUIET -dBATCH -sOutputFile=${FILE_NAME}-lite.pdf ${FILE_NAME}.pdf
+gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=$PDF_SETTINGS "$COLOR_SETTINGS" -dNOPAUSE -dQUIET -dBATCH -sOutputFile="${FILE_NAME}-lite.pdf" "${FILE_NAME}.pdf"
