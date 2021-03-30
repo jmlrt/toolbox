@@ -1,0 +1,37 @@
+# cloudformation_stacks_update.yml
+
+- hosts: localhost
+  connection: local
+  gather_facts: False
+
+  tasks:
+
+  - name: retrieve stack facts
+    cloudformation_facts:
+      stack_name: "{{ stack_name }}"
+      stack_resources: true
+    check_mode: no
+
+  - name: update stack
+    cloudformation:
+      stack_name: "{{ stack_name }}"
+      state: "present"
+      region: "us-east-1"
+      template_parameters: "{{ ansible_facts.cloudformation[stack_name].stack_parameters | combine(updated_params)}}"
+
+  - name: show stack status
+    debug:
+      msg: "{{ ansible_facts.cloudformation[stack_name].stack_description.stack_status }}"
+
+  - name: show stack params
+    debug:
+      msg: "{{ ansible_facts.cloudformation[stack_name].stack_parameters }}"
+
+  - name: show stack outputs
+    debug:
+      msg: "{{ ansible_facts.cloudformation[stack_name].stack_outputs }}"
+
+  - name: show stack resources
+    debug:
+      msg: "{{ ansible_facts.cloudformation[stack_name].stack_resources }}"
+
