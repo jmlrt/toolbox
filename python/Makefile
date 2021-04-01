@@ -9,8 +9,12 @@ pip: venv
 *.py: pip
 	venv/bin/python3 $@ $(ARGS)
 
-.PHONY: black
-black: pip
+.PHONY: lint
+lint: pip
+	venv/bin/flake8 *.py
+
+.PHONY: format
+format: pip
 	venv/bin/black *.py
 
 .PHONY: ipython
