@@ -13,11 +13,15 @@ pip: venv
 
 .PHONY: lint
 lint: pip
-	$(VENV)/bin/flake8 *.py
+	$(VENV)/bin/flake8 .
 
 .PHONY: format
 format: pip
-	$(VENV)/bin/black *.py
+	$(VENV)/bin/black .
+
+.PHONY: test
+test: pip
+	$(VENV)/bin/pytest tests
 
 .PHONY: ipython
 ipython: pip

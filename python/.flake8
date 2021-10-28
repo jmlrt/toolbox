@@ -1,3 +1,3 @@
 [flake8]
 # do not warn for lines > 80 (let black handle lines length)
-ignore = E501
+ignore = E501, W503
