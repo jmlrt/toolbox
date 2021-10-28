@@ -4,7 +4,6 @@ from collections import Counter
 import argparse
 import subprocess
 import json
-import sys
 
 data = []
 
