@@ -1,5 +1,12 @@
 VENV := $(HOME)/.venvs/tools
 
+.PHONY: clean
+clean: ## Clean python environment
+	find . -type d -name '.pytest_cache' -prune -exec rm -fr {} \;
+	find . -type d -name __pycache__ -prune -exec rm -fr {} \;
+	find . -type d -name '*.egg-info' -prune -exec rm -fr {} \;
+	find . -type d -name 'dist' -prune -exec rm -fr {} \;
+
 .PHONY: venv
 venv:
 	python3 -m venv $(VENV)
@@ -21,7 +28,10 @@ format: pip
 
 .PHONY: test
 test: pip
-	$(VENV)/bin/pytest tests
+	$(VENV)/bin/pytest -lsvx \
+		--cov-report term-missing \
+		--random-order-bucket=global \
+		tests $(ARGS)
 
 .PHONY: ipython
 ipython: pip
