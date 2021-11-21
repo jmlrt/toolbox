@@ -6,32 +6,35 @@ from utils.files import (
     rename_file,
     shred_file,
 )
+from utils.shell import check_command_in_path, check_environment_variable
 
+import argparse
 from datetime import datetime
+from getpass import getpass
 import logging
 import os
+import subprocess
 
 
-date = datetime.today().strftime("%Y%m%d")
-work_dir = f"{os.environ['HOME']}/Downloads"
-gpg_passphrase = os.environ["GPG_PASSPHRASE"]
+DATE = datetime.today().strftime("%Y%m%d")
+WORK_DIR = f"{os.environ['HOME']}/Downloads"
 
-standard_backups = {
-    f"{date}_pocket_bookmarks.html": "ril_export.html",
-    f"{date}_shaarli_bookmarks.html": f"bookmarks_all_{date}_*.html",
+FILES_TO_RENAME = {
+    f"{DATE}_pocket_bookmarks.html": "ril_export.html",
+    f"{DATE}_shaarli_bookmarks.html": f"bookmarks_all_{DATE}_*.html",
 }
-encrypted_backups = {
-    f"{date}_bitwarden_perso_export.csv": f"bitwarden_export_{date}*.csv",
-    f"{date}_bitwarden_perso_export.json": f"bitwarden_export_{date}*.json",
-    f"{date}_bitwarden_org_jj_export.csv": f"bitwarden_org_export_{date}*.csv",
-    f"{date}_bitwarden_org_jj_export.json": f"bitwarden_org_export_{date}*.json",
-}
+BITWARDEN_EXPORTS = [
+    ("personal", "json", f"{WORK_DIR}/{DATE}_bitwarden_perso_export.json"),
+    ("personal", "csv", f"{WORK_DIR}/{DATE}_bitwarden_perso_export.csv"),
+    ("organization", "json", f"{WORK_DIR}/{DATE}_bitwarden_org_export.json"),
+    ("organization", "csv", f"{WORK_DIR}/{DATE}_bitwarden_org_export.csv"),
+]
 
 
 def backup_files(files_patterns):
     for file in files_patterns.keys():
         try:
-            rename_file(f"{work_dir}/{files_patterns[file]}", f"{work_dir}/{file}")
+            rename_file(f"{WORK_DIR}/{files_patterns[file]}", f"{WORK_DIR}/{file}")
         except FileNotFoundError:
             logging.info(f"No file found matching {files_patterns[file]}")
 
@@ -53,20 +56,56 @@ def encrypt_backup(file, passphrase):
     shred_file(decrypted_file)
 
 
+def export_bitwarden_secrets():
+    check_environment_variable("BW_SESSION", "You must be logged in to Bitwarden")
+    gpg_passphrase = check_environment_variable("GPG_PASSPHRASE")
+    organization_id = check_environment_variable("BW_ORGANIZATION_ID")
+    check_command_in_path(
+        "bw", "Please install Bitwarden CLI: https://bitwarden.com/help/article/cli/"
+    )
+
+    def export_bitwarden_command(vault, password, file_format, file_path):
+        bw_cmd = [
+            "bw",
+            "export",
+            password,
+            "--output",
+            file_path,
+            "--format",
+            file_format,
+        ]
+        if vault == "organization":
+            bw_cmd.extend(["--organizationid", organization_id])
+        subprocess.run(bw_cmd)
+        logging.info(f"Bitwarden {vault} vault exported in {file_format.upper()}")
+
+    password = getpass("Enter Bitwarden password: ")
+
+    for vault, file_format, file_path in BITWARDEN_EXPORTS:
+        export_bitwarden_command(vault, password, file_format, file_path)
+        encrypt_backup(file_path, gpg_passphrase)
+
+
+def rename_exports():
+    for file in FILES_TO_RENAME:
+        try:
+            rename_file(f"{WORK_DIR}/{FILES_TO_RENAME[file]}", f"{WORK_DIR}/{file}")
+        except FileNotFoundError:
+            logging.info(f"No file found matching {FILES_TO_RENAME[file]}")
+
+
 def main():
     logging.basicConfig(level=logging.INFO)
-
-    backups = standard_backups | encrypted_backups
-    for file in backups:
-        try:
-            rename_file(f"{work_dir}/{backups[file]}", f"{work_dir}/{file}")
-        except FileNotFoundError:
-            logging.info(f"No file found matching {backups[file]}")
-
-    if gpg_passphrase is None:
-        raise Exception("GPG_PASSPHRASE environment variable missing")
-    for file in encrypted_backups.keys():
-        encrypt_backup(f"{work_dir}/{file}", gpg_passphrase)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("command")
+    command = parser.parse_args().command
+    print(command)
+    if command == "export-secrets":
+        export_bitwarden_secrets()
+    elif command == "rename-exports":
+        rename_exports()
+    else:
+        logging.error("Command not found")
 
 
 if __name__ == "__main__":
