@@ -1,5 +1,5 @@
 import os
-import subprocess
+import shutil
 
 
 class VariableNotFoundError(Exception):
@@ -7,12 +7,10 @@ class VariableNotFoundError(Exception):
 
 
 def check_command_in_path(command, error_message=None):
-    command_run = subprocess.run(
-        ["command", "-v", command], capture_output=True, text=True
-    )
-    if command_run.returncode != 0:
+    command_path = shutil.which(command)
+    if command_path is None:
         raise FileNotFoundError(f"{command} missing\n{error_message}")
-    return command_run.stdout
+    return command_path
 
 
 def check_environment_variable(var, error_message=None):
