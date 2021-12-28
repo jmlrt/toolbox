@@ -16,18 +16,22 @@ import os
 import subprocess
 
 
-DATE = datetime.today().strftime("%Y%m%d")
+DATE = datetime.today()
+FORMATED_DATE = DATE.strftime("%Y%m%d")
 WORK_DIR = f"{os.environ['HOME']}/Downloads"
 
 FILES_TO_RENAME = {
-    f"{DATE}_pocket_bookmarks.html": "ril_export.html",
-    f"{DATE}_shaarli_bookmarks.html": f"bookmarks_all_{DATE}_*.html",
+    f"{FORMATED_DATE}_pocket_bookmarks.html": "ril_export.html",
+    f"{FORMATED_DATE}_shaarli_bookmarks.html": f"bookmarks_all_{FORMATED_DATE}_*.html",
+    f"{FORMATED_DATE}_firefox_bookmarks.html": f"bookmarks.html",
+    f"{FORMATED_DATE}_firefox_bookmarks.json": f"bookmarks-{DATE.strftime('%Y-%m-%d')}.json",
+    f"{FORMATED_DATE}_chrome_bookmarks.html": f"bookmarks_{DATE.strftime('%d_%m_%Y')}.html",
 }
 BITWARDEN_EXPORTS = [
-    ("personal", "json", f"{WORK_DIR}/{DATE}_bitwarden_perso_export.json"),
-    ("personal", "csv", f"{WORK_DIR}/{DATE}_bitwarden_perso_export.csv"),
-    ("organization", "json", f"{WORK_DIR}/{DATE}_bitwarden_org_export.json"),
-    ("organization", "csv", f"{WORK_DIR}/{DATE}_bitwarden_org_export.csv"),
+    ("personal", "json", f"{WORK_DIR}/{FORMATED_DATE}_bitwarden_perso_export.json"),
+    ("personal", "csv", f"{WORK_DIR}/{FORMATED_DATE}_bitwarden_perso_export.csv"),
+    ("organization", "json", f"{WORK_DIR}/{FORMATED_DATE}_bitwarden_org_export.json"),
+    ("organization", "csv", f"{WORK_DIR}/{FORMATED_DATE}_bitwarden_org_export.csv"),
 ]
 
 
