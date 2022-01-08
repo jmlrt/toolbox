@@ -26,6 +26,7 @@ FILES_TO_RENAME = {
     f"{FORMATED_DATE}_firefox_bookmarks.html": f"bookmarks.html",
     f"{FORMATED_DATE}_firefox_bookmarks.json": f"bookmarks-{DATE.strftime('%Y-%m-%d')}.json",
     f"{FORMATED_DATE}_chrome_bookmarks.html": f"bookmarks_{DATE.strftime('%d_%m_%Y')}.html",
+    f"{FORMATED_DATE}_todoist.zip": f"Todoist backup {DATE.strftime('%Y-%m-%d')}.zip",
 }
 BITWARDEN_EXPORTS = [
     ("personal", "json", f"{WORK_DIR}/{FORMATED_DATE}_bitwarden_perso_export.json"),
