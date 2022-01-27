@@ -2,8 +2,10 @@ black==21.10b0
 flake8==4.0.1
 flask==2.0.2
 ipython==7.31.1
+pylast==4.4.0
 pylint==2.12.2
 pytest==6.2.5
 pytest-cov==3.0.0
 pytest-random-order==1.0.4
 python-gnupg==0.4.7
+spotipy==2.19.0
