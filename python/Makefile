@@ -13,6 +13,7 @@ venv:
 
 .PHONY: pip
 pip: venv
+	$(VENV)/bin/pip install --upgrade pip
 	$(VENV)/bin/pip install -qr requirements.txt
 
 *.py: pip
