@@ -1,4 +1,5 @@
 from spotify.artist import Artist
+from utils.cache import cache_object, retrieve_object_from_cache
 
 
 class Track:
@@ -9,6 +10,15 @@ class Track:
         self._artists = None
         self._genres = None
         self.name = self.raw_track["name"]
+        cache_object(self, f"spotify/tracks/{track_id}.pickle")
+
+    @classmethod
+    def get_track(cls, client, track_id, refresh=False):
+        cache_file = f"spotify/tracks/{track_id}.pickle"
+        track = retrieve_object_from_cache(cache_file)
+        if track is not None and refresh is False:
+            return track
+        return Track(client, track_id)
 
     @property
     def artists(self):
@@ -16,7 +26,7 @@ class Track:
             return self._artists
         self._artists = []
         for raw_artist in self.raw_track["artists"]:
-            self._artists.append(Artist(self.client, raw_artist["id"]))
+            self._artists.append(Artist.get_artist(self.client, raw_artist["id"]))
         return self._artists
 
     @property

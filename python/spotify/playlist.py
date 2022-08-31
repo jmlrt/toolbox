@@ -1,4 +1,5 @@
 from spotify.track import Track
+from utils.cache import cache_object, retrieve_object_from_cache
 
 
 class Playlist:
@@ -10,6 +11,15 @@ class Playlist:
         self.owner = self.raw_playlist["owner"]["display_name"]
         self._tracks = None
         self._sorted_tracks = None
+        cache_object(self, f"spotify/playlists/{playlist_id}.pickle")
+
+    @classmethod
+    def get_playlist(cls, client, playlist_id, refresh=False):
+        cache_file = f"spotify/playlists/{playlist_id}.pickle"
+        playlist = retrieve_object_from_cache(cache_file)
+        if playlist is not None and refresh is False:
+            return playlist
+        return Playlist(client, playlist_id)
 
     @property
     def tracks(self):
@@ -18,11 +28,11 @@ class Playlist:
         self._tracks = []
         tracks = self.raw_playlist["tracks"]
         for track in tracks["items"]:
-            self._tracks.append(Track(self.client, track["track"]["id"]))
+            self._tracks.append(Track.get_track(self.client, track["track"]["id"]))
         while tracks["next"]:
             tracks = self.client.next(tracks)
             for track in tracks["items"]:
-                self._tracks.append(self.client, Track(track["track"]["id"]))
+                self._tracks.append(Track.get_track(self.client, track["track"]["id"]))
         return self._tracks
 
     @property
