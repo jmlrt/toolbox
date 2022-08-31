@@ -1,4 +1,6 @@
-VENV := $(HOME)/.venvs/tools
+ifeq ($(VIRTUAL_ENV),)
+	VIRTUAL_ENV := $(HOME)/.venvs/tools
+endif
 
 .PHONY: clean
 clean: ## Clean python environment
@@ -9,31 +11,32 @@ clean: ## Clean python environment
 
 .PHONY: venv
 venv:
-	python3 -m venv $(VENV)
+	python3 -m venv $(VIRTUAL_ENV)
 
 .PHONY: pip
 pip: venv
-	$(VENV)/bin/pip install --upgrade pip
-	$(VENV)/bin/pip install -qr requirements.txt
+	$(VIRTUAL_ENV)/bin/pip install --upgrade pip
+	$(VIRTUAL_ENV)/bin/pip install -qr requirements.txt
 
 *.py: pip
-	$(VENV)/bin/python3 $@ $(ARGS)
+	$(VIRTUAL_ENV)/bin/python3 $@ $(ARGS)
 
 .PHONY: lint
 lint: pip
-	$(VENV)/bin/flake8 .
+	$(VIRTUAL_ENV)/bin/flake8 .
 
 .PHONY: format
 format: pip
-	$(VENV)/bin/black .
+	$(VIRTUAL_ENV)/bin/black .
+	$(VIRTUAL_ENV)/bin/isort .
 
 .PHONY: test
 test: pip
-	$(VENV)/bin/pytest -lsvx \
+	$(VIRTUAL_ENV)/bin/pytest -lsvx \
 		--cov-report term-missing \
 		--random-order-bucket=global \
 		tests $(ARGS)
 
 .PHONY: ipython
 ipython: pip
-	$(VENV)/bin/ipython
+	$(VIRTUAL_ENV)/bin/ipython

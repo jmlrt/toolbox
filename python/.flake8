@@ -2,3 +2,4 @@
 # E501: do not warn for lines > 80 (let black handle lines length)
 # W503: do not warn for line break before binary operator
 ignore = E501,W503
+exclude = .direnv/
