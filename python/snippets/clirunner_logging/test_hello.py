@@ -1,6 +1,6 @@
-from click.testing import CliRunner
 import logging
 
+from click.testing import CliRunner
 from hello import hello
 
 

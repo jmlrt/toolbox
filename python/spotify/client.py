@@ -1,7 +1,6 @@
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
-
 SCOPE = "user-library-read"
 
 

@@ -1,4 +1,5 @@
 import os
+
 import pylast
 
 # You have to have your own unique two values for API_KEY and API_SECRET

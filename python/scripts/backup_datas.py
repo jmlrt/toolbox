@@ -1,20 +1,19 @@
+import argparse
+import logging
+import os
+import subprocess
+from datetime import datetime
+from getpass import getpass
+
 from utils.files import (
-    create_checksum_file,
     compare_files,
+    create_checksum_file,
     decrypt_file,
     encrypt_file,
     rename_file,
     shred_file,
 )
 from utils.shell import check_command_in_path, check_environment_variable
-
-import argparse
-from datetime import datetime
-from getpass import getpass
-import logging
-import os
-import subprocess
-
 
 DATE = datetime.today()
 FORMATED_DATE = DATE.strftime("%Y%m%d")
@@ -23,7 +22,7 @@ WORK_DIR = f"{os.environ['HOME']}/Downloads"
 FILES_TO_RENAME = {
     f"{FORMATED_DATE}_pocket_bookmarks.html": "ril_export.html",
     f"{FORMATED_DATE}_shaarli_bookmarks.html": f"bookmarks_all_{FORMATED_DATE}_*.html",
-    f"{FORMATED_DATE}_firefox_bookmarks.html": f"bookmarks.html",
+    f"{FORMATED_DATE}_firefox_bookmarks.html": "bookmarks.html",
     f"{FORMATED_DATE}_firefox_bookmarks.json": f"bookmarks-{DATE.strftime('%Y-%m-%d')}.json",
     f"{FORMATED_DATE}_chrome_bookmarks.html": f"bookmarks_{DATE.strftime('%d_%m_%Y')}.html",
     f"{FORMATED_DATE}_todoist.zip": f"Todoist backup {DATE.strftime('%Y-%m-%d')}.zip",

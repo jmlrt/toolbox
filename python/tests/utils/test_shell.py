@@ -1,11 +1,12 @@
+import os
+
+import pytest
+
 from utils.shell import (
     VariableNotFoundError,
     check_command_in_path,
     check_environment_variable,
 )
-
-import os
-import pytest
 
 
 def test_check_command_in_path():

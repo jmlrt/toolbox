@@ -1,9 +1,10 @@
-from glob import glob
-import gnupg
 import hashlib
 import logging
 import os
+from glob import glob
 from pathlib import Path
+
+import gnupg
 
 CIPHER = "AES256"
 

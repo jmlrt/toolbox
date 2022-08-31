@@ -1,6 +1,6 @@
-import click
 import logging
 
+import click
 
 logging.basicConfig(level=logging.INFO)
 

@@ -1,3 +1,5 @@
+import os
+
 from utils.files import (
     compare_files,
     create_checksum_file,
@@ -6,9 +8,6 @@ from utils.files import (
     hash_file,
     rename_file,
 )
-
-import os
-
 
 GPG_PASSPHRASE = "mypassphrase"
 

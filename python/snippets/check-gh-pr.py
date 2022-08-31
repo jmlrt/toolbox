@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-from collections import Counter
 import argparse
-import subprocess
 import json
+import subprocess
+from collections import Counter
 
 data = []
 
