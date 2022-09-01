@@ -21,15 +21,6 @@ pip: venv
 *.py: pip
 	$(VIRTUAL_ENV)/bin/python3 $@ $(ARGS)
 
-.PHONY: lint
-lint: pip
-	$(VIRTUAL_ENV)/bin/flake8 .
-
-.PHONY: format
-format: pip
-	$(VIRTUAL_ENV)/bin/black .
-	$(VIRTUAL_ENV)/bin/isort .
-
 .PHONY: test
 test: pip
 	$(VIRTUAL_ENV)/bin/pytest -lsvx \
