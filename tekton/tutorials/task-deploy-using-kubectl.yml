@@ -15,8 +15,7 @@ spec:
         description: Path to the manifest to apply
       - name: yamlPathToImage
         type: string
-        description:
-          The path to the image to replace in the yaml manifest (arg to yq)
+        description: The path to the image to replace in the yaml manifest (arg to yq)
   steps:
     - name: replace-image
       image: mikefarah/yq

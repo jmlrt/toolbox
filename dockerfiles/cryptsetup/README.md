@@ -17,3 +17,4 @@ mount /dev/mapper/datatmp /mnt
 
 # Navigate inside the encrypted container
 cd /mnt
+```

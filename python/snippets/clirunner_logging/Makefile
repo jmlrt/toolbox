@@ -5,4 +5,3 @@ hello: hello.py
 
 test: hello.py test_hello.py
 	python -m pytest -svx .
-

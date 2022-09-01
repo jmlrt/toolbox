@@ -10,4 +10,3 @@ spec:
         - echo
       args:
         - "hello world"
-
