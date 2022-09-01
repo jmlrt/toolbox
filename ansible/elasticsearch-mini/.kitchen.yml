@@ -9,11 +9,11 @@ provisioner:
   ansible_verbose: true
   ansible_version: latest
   require_chef_for_busser: false
-  <% if ENV['PACKAGE'] %>
-  attributes:
-    extra_vars:
-      package: "<%= ENV['PACKAGE'] %>"
-  <% end %>
+  # <% if ENV['PACKAGE'] %>
+  # attributes:
+  #   extra_vars:
+  #     package: "<%= ENV['PACKAGE'] %>"
+  # <% end %>
 
 platforms:
   - name: centos-7

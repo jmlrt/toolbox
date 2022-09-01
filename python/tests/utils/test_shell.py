@@ -1,7 +1,6 @@
 import os
 
 import pytest
-
 from utils.shell import (
     VariableNotFoundError,
     check_command_in_path,
