@@ -101,15 +101,12 @@ def rename_exports():
 def main():
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser()
-    parser.add_argument("command")
-    command = parser.parse_args().command
-    print(command)
-    if command == "export-secrets":
+    parser.add_argument("command", choices=["export-secrets", "rename-exports"])
+    args = parser.parse_args()
+    if args.command == "export-secrets":
         export_bitwarden_secrets()
-    elif command == "rename-exports":
+    if args.command == "rename-exports":
         rename_exports()
-    else:
-        logging.error("Command not found")
 
 
 if __name__ == "__main__":
