@@ -163,18 +163,19 @@ def bw_unlock() -> str:
     """
     Run 'bw unlock --raw' interactively (user types master password).
     Returns BW_SESSION string. Raises BitwardenError on failure.
+    Note: stderr is not captured to allow password prompt to display.
     """
     try:
         result = subprocess.run(
             ["bw", "unlock", "--raw"],
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
             text=True,
             timeout=300,
         )
         if result.returncode != 0:
-            error_msg = result.stderr.strip() if result.stderr else "unknown error"
-            raise BitwardenError(f"bw unlock failed: {error_msg}")
+            raise BitwardenError(
+                "bw unlock failed. Check that you are logged in: bw login"
+            )
         session = result.stdout.strip()
         logging.info("Successfully unlocked Bitwarden vault")
         return session
