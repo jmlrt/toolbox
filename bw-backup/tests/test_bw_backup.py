@@ -2,6 +2,7 @@
 
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 from unittest import mock
@@ -12,6 +13,13 @@ import pytest
 sys.path.insert(
     0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 )  # noqa: E402
+
+# Check if gpg is available for integration tests
+try:
+    gnupg.GPG()
+    HAS_GPG = True
+except Exception:
+    HAS_GPG = False
 
 from bw_backup import (  # noqa: E402
     BitwardenError,
@@ -81,7 +89,33 @@ def test_check_env_vars_missing(monkeypatch):
     monkeypatch.delenv("BW_GPG_PASSPHRASE_FIELD", raising=False)
 
     with pytest.raises(
-        EnvironmentError, match="Missing required environment variables"
+        EnvironmentError, match="Missing or empty required environment variables"
+    ):
+        check_env_vars()
+
+
+def test_check_env_vars_empty_string(monkeypatch):
+    """Test check_env_vars rejects empty string values."""
+    monkeypatch.setenv("BW_ORGANIZATION_ID", "")
+    monkeypatch.setenv("BW_GPG_PASSPHRASE_ID", "item456")
+    monkeypatch.setenv("BW_EXPORT_PATH", "/tmp/export")
+    monkeypatch.setenv("BW_GPG_PASSPHRASE_FIELD", "passphrase")
+
+    with pytest.raises(
+        EnvironmentError, match="Missing or empty required environment variables"
+    ):
+        check_env_vars()
+
+
+def test_check_env_vars_whitespace_only(monkeypatch):
+    """Test check_env_vars rejects whitespace-only values."""
+    monkeypatch.setenv("BW_ORGANIZATION_ID", "   ")
+    monkeypatch.setenv("BW_GPG_PASSPHRASE_ID", "item456")
+    monkeypatch.setenv("BW_EXPORT_PATH", "/tmp/export")
+    monkeypatch.setenv("BW_GPG_PASSPHRASE_FIELD", "passphrase")
+
+    with pytest.raises(
+        EnvironmentError, match="Missing or empty required environment variables"
     ):
         check_env_vars()
 
@@ -98,6 +132,14 @@ def test_check_export_path_missing(tmp_path):
     missing = tmp_path / "nonexistent"
     with pytest.raises(FileNotFoundError, match="BW_EXPORT_PATH does not exist"):
         check_export_path(str(missing))
+
+
+def test_check_export_path_is_file(tmp_path):
+    """Test check_export_path raises NotADirectoryError when path is a file."""
+    file_path = tmp_path / "file.txt"
+    file_path.write_text("test")
+    with pytest.raises(NotADirectoryError, match="BW_EXPORT_PATH is not a directory"):
+        check_export_path(str(file_path))
 
 
 # Command validation tests
@@ -135,6 +177,7 @@ def test_check_commands_success(mock_which):
 
 
 # GPG validation tests
+@pytest.mark.skipif(not HAS_GPG, reason="gpg not installed or configured")
 def test_check_gpg_success():
     """Test check_gpg validates GPG functionality."""
     check_gpg()  # Should not raise
@@ -149,6 +192,7 @@ def test_check_gpg_failure():
 
 
 # File operation tests
+@pytest.mark.skipif(not HAS_GPG, reason="gpg not installed or configured")
 def test_encrypt_decrypt_roundtrip(sample_file):
     """Test encrypt then decrypt yields original file."""
     passphrase = "test_passphrase_123"
@@ -166,6 +210,7 @@ def test_encrypt_decrypt_roundtrip(sample_file):
     os.remove(decrypted)
 
 
+@pytest.mark.skipif(not HAS_GPG, reason="gpg not installed or configured")
 def test_encrypt_creates_gpg_file(sample_file):
     """Test encrypt_file creates .gpg file."""
     passphrase = "test_passphrase_123"
@@ -181,6 +226,7 @@ def test_decrypt_validates_extension(sample_file):
         decrypt_file(sample_file, "passphrase")
 
 
+@pytest.mark.skipif(not HAS_GPG, reason="gpg not installed or configured")
 def test_decrypt_default_output_temp_file(sample_file, tmp_path):
     """Test decrypt_file creates temp file in same directory when output_file=None."""
     export_dir = str(tmp_path / "exports")
@@ -251,6 +297,22 @@ def test_shred_file_success(mock_run):
     assert "-u" in args
 
 
+@mock.patch("subprocess.run")
+def test_shred_file_failure(mock_run):
+    """Test shred_file raises RuntimeError on shred failure."""
+    mock_run.return_value = mock.MagicMock(returncode=1, stderr="Permission denied")
+    with pytest.raises(RuntimeError, match="shred failed"):
+        shred_file("/tmp/test_file")
+
+
+@mock.patch("subprocess.run")
+def test_shred_file_timeout(mock_run):
+    """Test shred_file raises RuntimeError on timeout."""
+    mock_run.side_effect = subprocess.TimeoutExpired("shred", 30)
+    with pytest.raises(RuntimeError, match="shred timed out"):
+        shred_file("/tmp/test_file")
+
+
 # Bitwarden operation tests
 @mock.patch("subprocess.run")
 def test_bw_export_success(mock_run):
@@ -313,6 +375,30 @@ def test_get_gpg_passphrase_missing_field(mock_run):
     item_json = {"id": "item123", "fields": [{"name": "other_field", "value": "value"}]}
     mock_run.return_value = mock.MagicMock(returncode=0, stdout=json.dumps(item_json))
     with pytest.raises(BitwardenError, match="Field.*not found"):
+        get_gpg_passphrase("session123", "item123", "passphrase")
+
+
+@mock.patch("subprocess.run")
+def test_get_gpg_passphrase_empty_value(mock_run):
+    """Test get_gpg_passphrase raises BitwardenError when field value is empty."""
+    item_json = {
+        "id": "item123",
+        "fields": [{"name": "passphrase", "value": ""}],
+    }
+    mock_run.return_value = mock.MagicMock(returncode=0, stdout=json.dumps(item_json))
+    with pytest.raises(BitwardenError, match="missing a non-empty value"):
+        get_gpg_passphrase("session123", "item123", "passphrase")
+
+
+@mock.patch("subprocess.run")
+def test_get_gpg_passphrase_whitespace_value(mock_run):
+    """Test get_gpg_passphrase raises BitwardenError when field value is whitespace-only."""
+    item_json = {
+        "id": "item123",
+        "fields": [{"name": "passphrase", "value": "   "}],
+    }
+    mock_run.return_value = mock.MagicMock(returncode=0, stdout=json.dumps(item_json))
+    with pytest.raises(BitwardenError, match="missing a non-empty value"):
         get_gpg_passphrase("session123", "item123", "passphrase")
 
 

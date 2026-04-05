@@ -5,6 +5,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -49,14 +50,30 @@ class ValidationError(Exception):
 
 # Logging setup
 class SecretFilter(logging.Filter):
-    """Redact BW_SESSION and passphrase from logs."""
+    """Redact sensitive credential values from logs."""
 
     def filter(self, record):
+        # Redact BW_SESSION token values and GPG passphrase values from messages and args
         if isinstance(record.msg, str):
-            msg = str(record.msg)
-            if "BW_SESSION" in msg or "passphrase" in msg.lower():
-                record.msg = "***REDACTED***"
+            record.msg = self._redact_secrets(record.msg)
+        if record.args and isinstance(record.args, dict):
+            record.args = {
+                k: self._redact_secrets(str(v)) if isinstance(v, str) else v
+                for k, v in record.args.items()
+            }
+        elif record.args and isinstance(record.args, tuple):
+            record.args = tuple(
+                self._redact_secrets(str(arg)) if isinstance(arg, str) else arg
+                for arg in record.args
+            )
         return True
+
+    @staticmethod
+    def _redact_secrets(text: str) -> str:
+        """Redact BW_SESSION=... and passphrase=... patterns from text."""
+        text = re.sub(r"BW_SESSION=\S+", "BW_SESSION=***REDACTED***", text)
+        text = re.sub(r"passphrase=\S+", "passphrase=***REDACTED***", text)
+        return text
 
 
 def setup_logging() -> None:
@@ -90,23 +107,27 @@ def check_env_vars() -> dict:
     missing = []
     for var in required:
         value = os.getenv(var)
-        if value is None:
+        # Reject None or empty/whitespace-only strings
+        if not value or not value.strip():
             missing.append(var)
         else:
             env[var] = value
     if missing:
         raise EnvironmentError(
-            f"Missing required environment variables: {', '.join(missing)}"
+            f"Missing or empty required environment variables: {', '.join(missing)}"
         )
     logging.info("All required environment variables are set")
     return env
 
 
 def check_export_path(path: str) -> None:
-    """Raise FileNotFoundError if BW_EXPORT_PATH does not exist."""
-    if not Path(path).exists():
+    """Raise if BW_EXPORT_PATH does not exist or is not a directory."""
+    export_path = Path(path)
+    if not export_path.exists():
         raise FileNotFoundError(f"BW_EXPORT_PATH does not exist: {path}")
-    logging.info(f"Export path exists: {path}")
+    if not export_path.is_dir():
+        raise NotADirectoryError(f"BW_EXPORT_PATH is not a directory: {path}")
+    logging.info(f"Export path exists and is a directory: {path}")
 
 
 def check_gpg() -> None:
@@ -115,8 +136,10 @@ def check_gpg() -> None:
         gpg = gnupg.GPG()
         test_data = b"test data for gpg validation"
 
-        # Encrypt with dummy passphrase
-        encrypted = gpg.encrypt(test_data, "", symmetric=CIPHER, passphrase="test")
+        # Encrypt with symmetric cipher (recipients=None for symmetric mode)
+        encrypted = gpg.encrypt(
+            test_data, recipients=None, symmetric=CIPHER, passphrase="test"
+        )
         if not encrypted.ok:
             raise EncryptionError(f"GPG encryption failed: {encrypted.status}")
 
@@ -145,11 +168,13 @@ def bw_unlock() -> str:
         result = subprocess.run(
             ["bw", "unlock", "--raw"],
             stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
             timeout=300,
         )
         if result.returncode != 0:
-            raise BitwardenError(f"bw unlock failed with exit code {result.returncode}")
+            error_msg = result.stderr.strip() if result.stderr else "unknown error"
+            raise BitwardenError(f"bw unlock failed: {error_msg}")
         session = result.stdout.strip()
         logging.info("Successfully unlocked Bitwarden vault")
         return session
@@ -165,7 +190,7 @@ def get_gpg_passphrase(bw_session: str, item_id: str, field_name: str) -> str:
     """
     Run 'bw get item <item_id>' and extract field value.
     Returns passphrase string. Never logs it.
-    Raises BitwardenError on failure.
+    Raises BitwardenError on failure or if passphrase is empty.
     """
     try:
         env = os.environ.copy()
@@ -184,8 +209,13 @@ def get_gpg_passphrase(bw_session: str, item_id: str, field_name: str) -> str:
         fields = item.get("fields", [])
         for field in fields:
             if field.get("name") == field_name:
+                passphrase = field.get("value")
+                if not isinstance(passphrase, str) or not passphrase.strip():
+                    raise BitwardenError(
+                        f"Field '{field_name}' in item {item_id} is missing a non-empty value"
+                    )
                 logging.info("Successfully retrieved GPG passphrase from Bitwarden")
-                return field.get("value", "")
+                return passphrase
 
         raise BitwardenError(f"Field '{field_name}' not found in item {item_id}")
     except json.JSONDecodeError as e:
@@ -326,7 +356,7 @@ def create_checksum_file(file: str) -> str:
 
 
 def shred_file(file: str) -> None:
-    """Securely delete file using 'shred -u'. subprocess.run, never os.system."""
+    """Securely delete file using 'shred -u'. Raises error if shredding fails."""
     try:
         result = subprocess.run(
             ["shred", "-u", file],
@@ -335,11 +365,10 @@ def shred_file(file: str) -> None:
             timeout=30,
         )
         if result.returncode != 0:
-            logging.warning(f"shred failed for {file}: {result.stderr}")
-        else:
-            logging.info(f"Securely shredded: {file}")
+            raise RuntimeError(f"shred failed for {file}: {result.stderr}")
+        logging.info(f"Securely shredded: {file}")
     except subprocess.TimeoutExpired:
-        logging.error(f"shred timed out for {file}")
+        raise RuntimeError(f"shred timed out for {file}")
 
 
 # Orchestration
@@ -372,10 +401,15 @@ def export_and_backup(env: dict) -> None:
 
             # Validate encryption success before destroying plaintext.
             # Decrypts to temp file in BW_EXPORT_PATH to catch silent corruption.
-            decrypted = decrypt_file(encrypted, passphrase, output_file=None)
-            if not compare_files(output, decrypted):
-                raise ValidationError(f"Validation failed for {encrypted}")
-            shred_file(decrypted)
+            decrypted = None
+            try:
+                decrypted = decrypt_file(encrypted, passphrase, output_file=None)
+                if not compare_files(output, decrypted):
+                    raise ValidationError(f"Validation failed for {encrypted}")
+            finally:
+                # Always clean up decrypted temp file, even on validation failure
+                if decrypted is not None:
+                    shred_file(decrypted)
 
             create_checksum_file(encrypted)
             shred_file(output)
