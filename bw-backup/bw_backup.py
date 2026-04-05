@@ -17,6 +17,16 @@ import gnupg
 # Cipher for symmetric encryption
 CIPHER = "AES256"
 
+# Security note:
+# - User's master password is never captured (handled interactively by bw CLI)
+# - BW_SESSION token and GPG passphrase are stored in memory as Python strings
+#   and passed to subprocesses via environment variables (standard practice)
+# - These are cleared (set to None) in finally blocks after use
+# - Note: Python strings cannot be reliably zeroed in memory due to the managed
+#   runtime, but sensitive data lifetime is minimized
+# - Logging is filtered to redact messages containing "BW_SESSION" or "passphrase"
+# - This tool is designed for short-lived, single-run execution
+
 
 # Custom exceptions
 class BitwardenError(Exception):
@@ -134,12 +144,12 @@ def bw_unlock() -> str:
     try:
         result = subprocess.run(
             ["bw", "unlock", "--raw"],
-            capture_output=True,
+            stdout=subprocess.PIPE,
             text=True,
-            timeout=60,
+            timeout=300,
         )
         if result.returncode != 0:
-            raise BitwardenError(f"bw unlock failed: {result.stderr}")
+            raise BitwardenError(f"bw unlock failed with exit code {result.returncode}")
         session = result.stdout.strip()
         logging.info("Successfully unlocked Bitwarden vault")
         return session
@@ -336,9 +346,10 @@ def shred_file(file: str) -> None:
 def export_and_backup(env: dict) -> None:
     """
     Full workflow. Called by main().
-    Passphrase cleared in finally block.
+    Sensitive data (passphrase, session) cleared in finally block.
     """
     passphrase = None
+    bw_session = None
     try:
         bw_session = bw_unlock()
         passphrase = get_gpg_passphrase(
@@ -371,7 +382,9 @@ def export_and_backup(env: dict) -> None:
 
         logging.info("Backup completed successfully")
     finally:
+        # Clear sensitive data from memory
         passphrase = None
+        bw_session = None
 
 
 def main() -> None:
