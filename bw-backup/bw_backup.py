@@ -299,10 +299,12 @@ def decrypt_file(
     Decrypt .gpg file. If output_file is None, creates temp file in same directory.
     Returns path to decrypted file.
     Raises EncryptionError on failure.
+    Securely deletes temp files on failure; caller is responsible for deleting passed-in files.
     """
     if not encrypted_file.endswith(".gpg"):
         raise EncryptionError(f"File does not have .gpg extension: {encrypted_file}")
 
+    temp_file_created = False
     try:
         gpg = gnupg.GPG()
 
@@ -311,6 +313,7 @@ def decrypt_file(
             encrypted_dir = os.path.dirname(encrypted_file)
             fd, output_file = tempfile.mkstemp(dir=encrypted_dir)
             os.close(fd)
+            temp_file_created = True
 
         with open(encrypted_file, "rb") as f:
             result = gpg.decrypt_file(
@@ -320,15 +323,21 @@ def decrypt_file(
             )
 
         if not result.ok:
-            # Clean up temp file if decryption failed
-            if os.path.exists(output_file):
-                os.remove(output_file)
+            # Securely delete temp file if decryption failed
+            if temp_file_created and os.path.exists(output_file):
+                shred_file(output_file)
             raise EncryptionError(f"GPG decryption failed: {result.status}")
 
         return output_file
     except EncryptionError:
         raise
     except Exception as e:
+        # Clean up temp file on unexpected errors
+        if temp_file_created and output_file and os.path.exists(output_file):
+            try:
+                shred_file(output_file)
+            except Exception:
+                pass  # Log warning but don't mask original exception
         raise EncryptionError(f"decrypt_file error: {e}")
 
 

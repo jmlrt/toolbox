@@ -2,24 +2,20 @@
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 from unittest import mock
 
-import gnupg
 import pytest
 
 sys.path.insert(
     0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 )  # noqa: E402
 
-# Check if gpg is available for integration tests
-try:
-    gnupg.GPG()
-    HAS_GPG = True
-except Exception:
-    HAS_GPG = False
+# Check if gpg binary is available for integration tests
+HAS_GPG = shutil.which("gpg") is not None
 
 from bw_backup import (  # noqa: E402
     BitwardenError,
@@ -43,13 +39,6 @@ from bw_backup import (  # noqa: E402
 
 
 # Fixtures
-@pytest.fixture
-def gpg_home(tmp_path):
-    """Temporary GPG home dir with test key."""
-    gpg = gnupg.GPG(gnupghome=str(tmp_path))
-    return gpg, str(tmp_path)
-
-
 @pytest.fixture
 def sample_file(tmp_path):
     """Small text file for encryption tests."""

@@ -10,6 +10,7 @@ Exports personal and org Bitwarden vaults to JSON, encrypts with GPG (AES256), c
 
 - `bw` CLI (Bitwarden)
 - `gnupg`
+- `shred` (secure file deletion)
 - Python 3.13+
 - `uv` (for installation)
 
