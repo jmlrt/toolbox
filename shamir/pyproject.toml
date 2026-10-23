@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "shamir"
+version = "0.1.0"
+description = "File encryption/decryption using Shamir's secret sharing"
+requires-python = ">=3.11"
+dependencies = [
+    "python-gnupg",
+    "pexpect",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "pytest-cov>=4.0"]
+
+[project.scripts]
+shamir = "shamir:main"
