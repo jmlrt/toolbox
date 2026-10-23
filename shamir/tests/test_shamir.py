@@ -95,8 +95,10 @@ class TestEncryptDecrypt:
         """Decryption with a wrong passphrase must raise, not fail silently."""
         encrypted_file = encrypt_file(temp_file, passphrase)
 
-        with pytest.raises(Exception):
-            decrypt_file(encrypted_file, "wrong_passphrase")
+        # Separate, nonexistent output path: the default would collide with
+        # the still-present plaintext and raise before GPG is ever called.
+        with pytest.raises(Exception, match="Decryption of .* failed"):
+            decrypt_file(encrypted_file, "wrong_passphrase", f"{encrypted_file}.dec")
 
         # Cleanup
         os.remove(encrypted_file)
