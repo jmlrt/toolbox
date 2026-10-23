@@ -1,24 +1,19 @@
 #!/usr/bin/env python3
 """
-Obsidian Workspace Comparison Script
+Workspace Comparison Script
 
-This script compares markdown files between two Obsidian workspaces (Perso and Resources)
-using SHA-256 checksums to identify content matches regardless of file location.
+Compares markdown files between two directories (reference and target)
+using SHA-256 checksums to identify content matches regardless of file
+location or name.
 
-Purpose: Before deleting the Resources workspace, ensure all its content has been imported
-into the Perso workspace.
-
-Output: Reports all markdown files in Resources that don't have matching content in Perso,
-so they can be reviewed manually for import or deletion.
+Output: reports all markdown files in the target directory that don't
+have matching content in the reference directory, for manual review
+before deleting or archiving the target directory.
 """
 
+import argparse
 import hashlib
 from pathlib import Path
-
-# Configuration
-PERSO_PATH = "Perso/"
-RESOURCES_PATH = "Resources/"
-EXCLUDE_FOLDER = ".obsidian"
 
 
 def get_checksum(file_path):
@@ -29,12 +24,13 @@ def get_checksum(file_path):
     return sha256_hash.hexdigest()
 
 
-def scan_workspace(path, return_dict=False):
+def scan_workspace(path, exclude_folder, return_dict=False):
     """
-    Scan workspace for markdown files and calculate checksums.
+    Scan a directory for markdown files and calculate checksums.
 
     Args:
         path: Directory path to scan
+        exclude_folder: Folder name to skip
         return_dict: If True, return dict {checksum: filepath}, else return set of checksums
 
     Returns:
@@ -47,10 +43,9 @@ def scan_workspace(path, return_dict=False):
     else:
         result = set()
 
-    # Recursively find all .md files, excluding .obsidian folders
+    # Recursively find all .md files, excluding the configured folder
     for md_file in workspace_path.rglob("*.md"):
-        # Skip files in .obsidian folders
-        if EXCLUDE_FOLDER in md_file.parts:
+        if exclude_folder in md_file.parts:
             continue
 
         # Skip symlinks
@@ -85,26 +80,44 @@ def format_size(size_bytes):
 
 def main():
     """Main execution."""
-    print("Scanning workspaces...\n")
+    parser = argparse.ArgumentParser(
+        description="Report markdown files in the target directory that have "
+        "no content match in the reference directory."
+    )
+    parser.add_argument(
+        "reference", help="Reference directory whose content counts as present"
+    )
+    parser.add_argument(
+        "target", help="Target directory checked for unique markdown files"
+    )
+    parser.add_argument(
+        "-x",
+        "--exclude",
+        default=".obsidian",
+        help="Folder name to skip (default: %(default)s)",
+    )
+    args = parser.parse_args()
 
-    # Scan Perso workspace (only need checksums)
-    perso_checksums = scan_workspace(PERSO_PATH)
+    print("Scanning directories...\n")
 
-    # Scan Resources workspace (need file paths for reporting)
-    resources_files = scan_workspace(RESOURCES_PATH, return_dict=True)
+    # Scan reference directory (only need checksums)
+    reference_checksums = scan_workspace(args.reference, args.exclude)
 
-    # Find files in Resources not in Perso
-    unique_checksums = set(resources_files.keys()) - perso_checksums
+    # Scan target directory (need file paths for reporting)
+    target_files = scan_workspace(args.target, args.exclude, return_dict=True)
+
+    # Find files in target not in reference
+    unique_checksums = set(target_files.keys()) - reference_checksums
 
     # Generate report
     print("Workspace Comparison Report")
     print("=" * 50)
     print()
-    print(f"Perso workspace: {len(perso_checksums):,} markdown files scanned")
-    print(f"Resources workspace: {len(resources_files):,} markdown files scanned")
+    print(f"Reference directory: {len(reference_checksums):,} markdown files scanned")
+    print(f"Target directory: {len(target_files):,} markdown files scanned")
     print()
     print(
-        f"Markdown files in Resources NOT found in Perso: {len(unique_checksums)} files"
+        f"Markdown files in target NOT found in reference: {len(unique_checksums)} files"
     )
     print("-" * 50)
     print()
@@ -113,8 +126,8 @@ def main():
         # Get file paths and sizes for unique files
         unique_files = []
         for checksum in unique_checksums:
-            file_path = resources_files[checksum]
-            full_path = Path(RESOURCES_PATH) / file_path
+            file_path = target_files[checksum]
+            full_path = Path(args.target) / file_path
             try:
                 file_size = full_path.stat().st_size
                 unique_files.append((file_path, file_size))
@@ -128,7 +141,9 @@ def main():
         for idx, (file_path, size) in enumerate(unique_files, 1):
             print(f"{idx}. {file_path} ({format_size(size)})")
     else:
-        print("All markdown files in Resources have matching content in Perso!")
+        print(
+            "All markdown files in the target directory have matching content in the reference directory!"
+        )
 
 
 if __name__ == "__main__":
