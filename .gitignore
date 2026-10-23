@@ -2,6 +2,4 @@
 .idea/
 .vscode/
 __pycache__/
-elastic/
-vendor/
 node_modules/
