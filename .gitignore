@@ -3,3 +3,13 @@
 .vscode/
 __pycache__/
 node_modules/
+
+# Python build artifacts (hatchling)
+build/
+dist/
+*.egg-info/
+
+# Virtual environments and test caches
+.venv/
+.pytest_cache/
+.coverage

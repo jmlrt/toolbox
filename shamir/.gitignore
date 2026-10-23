@@ -1,9 +1,0 @@
-# Build artifacts (hatchling)
-build/
-dist/
-*.egg-info/
-
-# Virtual environments and test caches
-.venv/
-.pytest_cache/
-.coverage
